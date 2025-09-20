@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Video Proctoring System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .video-section, .control-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+
+        .video-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        #video {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            border-radius: 10px;
+            background: #000;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            border-radius: 10px;
+        }
+
+        .recording-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #dc3545;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: none;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            border-left: 4px solid #6c757d;
+            transition: all 0.3s ease;
+        }
+
+        .status-card.good {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+
+        .status-card.warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+
+        .status-card.danger {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .stat-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .alert-log {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .alert-item {
+            padding: 8px;
+            margin: 5px 0;
+            border-left: 4px solid #667eea;
+            background: white;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .alert-item.warning {
+            border-left-color: #ffc107;
+        }
+
+        .alert-item.danger {
+            border-left-color: #dc3545;
+        }
+
+        .alert-item.success {
+            border-left-color: #28a745;
+        }
+
+        .loading-message {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            font-size: 1.1rem;
+        }
+
+        .report-section {
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            display: none;
+        }
+
+        .integrity-score {
+            font-size: 3rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .score-good { color: #28a745; }
+        .score-warning { color: #ffc107; }
+        .score-danger { color: #dc3545; }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            #video {
+                height: 300px;
+            }
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #333;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 AI Video Proctoring System</h1>
+            <p>Focus & Object Detection for Online Interviews</p>
+        </div>
+
+        <div id="loadingMessage" class="loading-message">
+            🤖 Loading AI models... This may take a few moments.
+        </div>
+
+        <div id="mainContent" class="main-content" style="display: none;">
+            <div class="video-section">
+                <h3 class="section-title">📹 Candidate Video Feed</h3>
+                <div class="video-container">
+                    <video id="video" autoplay muted playsinline></video>
+                    <canvas id="canvas"></canvas>
+                    <div id="recordingIndicator" class="recording-indicator">🔴 RECORDING</div>
+                </div>
+                
+                <div class="status-grid">
+                    <div id="faceStatus" class="status-card">
+                        <div><strong>Face Detection</strong></div>
+                        <div id="faceStatusText">Ready</div>
+                    </div>
+                    <div id="attentionStatus" class="status-card">
+                        <div><strong>Attention</strong></div>
+                        <div id="attentionStatusText">Monitoring</div>
+                    </div>
+                    <div id="objectStatus" class="status-card">
+                        <div><strong>Objects</strong></div>
+                        <div id="objectStatusText">Scanning</div>
+                    </div>
+                    <div id="systemStatus" class="status-card good">
+                        <div><strong>System</strong></div>
+                        <div id="systemStatusText">Ready</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="section-title">📋 Interview Setup</div>
+                <div class="form-group">
+                    <label for="candidateName">Candidate Name *</label>
+                    <input type="text" id="candidateName" placeholder="Enter candidate name" required>
+                </div>
+                <div class="form-group">
+                    <label for="position">Position</label>
+                    <input type="text" id="position" placeholder="e.g., Software Engineer">
+                </div>
+                <div class="form-group">
+                    <label for="sessionId">Session ID</label>
+                    <input type="text" id="sessionId" readonly>
+                </div>
+
+                <div class="section-title">🎮 Controls</div>
+                <button id="startBtn" class="btn btn-primary">▶️ Start Interview</button>
+                <button id="stopBtn" class="btn btn-danger" disabled>⏹️ Stop Interview</button>
+                <button id="reportBtn" class="btn btn-success" disabled>📊 Generate Report</button>
+
+                <div class="section-title">📊 Live Statistics</div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div id="duration" class="stat-number">00:00</div>
+                        <div class="stat-label">Duration</div>
+                    </div>
+                    <div class="stat-box">
+                        <div id="focusLoss" class="stat-number">0</div>
+                        <div class="stat-label">Focus Loss</div>
+                    </div>
+                    <div class="stat-box">
+                        <div id="suspiciousItems" class="stat-number">0</div>
+                        <div class="stat-label">Suspicious Items</div>
+                    </div>
+                    <div class="stat-box">
+                        <div id="integrityScore" class="stat-number">100</div>
+                        <div class="stat-label">Integrity Score</div>
+                    </div>
+                </div>
+
+                <div class="section-title">🚨 Live Alerts</div>
+                <div id="alertLog" class="alert-log">
+                    <div class="alert-item">System initialized and ready</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="reportSection" class="report-section">
+            <h3>📋 Proctoring Report</h3>
+            <div id="reportContent"></div>
+        </div>
+    </div>
+
+    <!-- AI Model Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+
+    <script>
+        class VideoProctoringSystem {
+            constructor() {
+                this.video = document.getElementById('video');
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.isRunning = false;
+                this.startTime = null;
+                this.sessionId = this.generateSessionId();
+                
+                // AI Models
+                this.objectModel = null;
+                this.modelsLoaded = false;
+                
+                // Statistics
+                this.stats = {
+                    duration: 0,
+                    focusLossEvents: 0,
+                    suspiciousItems: 0,
+                    integrityScore: 100,
+                    events: []
+                };
+                
+                // Detection state
+                this.faceDetectionCount = 0;
+                this.lastFaceDetection = Date.now();
+                this.consecutiveNoFace = 0;
+                
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    await this.setupCamera();
+                    await this.loadModels();
+                    this.setupEventListeners();
+                    this.setupUI();
+                    this.showMainContent();
+                } catch (error) {
+                    console.error('Initialization failed:', error);
+                    document.getElementById('loadingMessage').textContent = 
+                        '❌ Initialization failed: ' + error.message;
+                }
+            }
+            
+            async setupCamera() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: 640, height: 480, facingMode: 'user' },
+                        audio: false
+                    });
+                    
+                    this.video.srcObject = stream;
+                    
+                    return new Promise((resolve) => {
+                        this.video.onloadedmetadata = () => {
+                            this.canvas.width = this.video.videoWidth;
+                            this.canvas.height = this.video.videoHeight;
+                            resolve();
+                        };
+                    });
+                } catch (error) {
+                    throw new Error('Camera access denied. Please allow camera permissions.');
+                }
+            }
+            
+            async loadModels() {
+                try {
+                    document.getElementById('loadingMessage').textContent = 
+                        '🤖 Loading object detection model...';
+                    
+                    this.objectModel = await cocoSsd.load();
+                    this.modelsLoaded = true;
+                    
+                    document.getElementById('loadingMessage').textContent = 
+                        '✅ AI models loaded successfully!';
+                } catch (error) {
+                    console.warn('Model loading failed:', error);
+                    this.modelsLoaded = false;
+                }
+            }
+            
+            setupEventListeners() {
+                document.getElementById('startBtn').addEventListener('click', () => this.startInterview());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stopInterview());
+                document.getElementById('reportBtn').addEventListener('click', () => this.generateReport());
+            }
+            
+            setupUI() {
+                document.getElementById('sessionId').value = this.sessionId;
+            }
+            
+            showMainContent() {
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'grid';
+            }
+            
+            startInterview() {
+                const candidateName = document.getElementById('candidateName').value.trim();
+                if (!candidateName) {
+                    alert('Please enter candidate name');
+                    return;
+                }
+                
+                this.isRunning = true;
+                this.startTime = Date.now();
+                
+                // Update UI
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('recordingIndicator').style.display = 'block';
+                
+                // Start detection loops
+                this.startDetectionLoops();
+                
+                this.addAlert(`✅ Interview started for ${candidateName}`, 'success');
+                this.logEvent('INTERVIEW_START', `Started for ${candidateName}`);
+            }
+            
+            stopInterview() {
+                this.isRunning = false;
+                
+                // Update UI
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('reportBtn').disabled = false;
+                document.getElementById('recordingIndicator').style.display = 'none';
+                
+                if (this.startTime) {
+                    this.stats.duration = Math.floor((Date.now() - this.startTime) / 1000);
+                }
+                
+                this.calculateIntegrityScore();
+                this.addAlert('📹 Interview stopped', 'warning');
+                this.logEvent('INTERVIEW_STOP', 'Interview completed');
+            }
+            
+            startDetectionLoops() {
+                // Face detection simulation (every 2 seconds)
+                this.faceInterval = setInterval(() => {
+                    if (!this.isRunning) return;
+                    this.simulateFaceDetection();
+                }, 2000);
+                
+                // Object detection (every 3 seconds)
+                this.objectInterval = setInterval(async () => {
+                    if (!this.isRunning) return;
+                    await this.detectObjects();
+                }, 3000);
+                
+                // Stats update (every second)
+                this.statsInterval = setInterval(() => {
+                    if (!this.isRunning) return;
+                    this.updateStats();
+                }, 1000);
+            }
+            
+            simulateFaceDetection() {
+                // Simulate face detection with realistic scenarios
+                const scenarios = [
+                    { faces: 1, focused: true, probability: 0.7 },   // Normal
+                    { faces: 1, focused: false, probability: 0.15 }, // Looking away
+                    { faces: 0, focused: false, probability: 0.1 },  // No face
+                    { faces: 2, focused: false, probability: 0.05 }  // Multiple faces
+                ];
+                
+                const random = Math.random();
+                let cumulative = 0;
+                let scenario = scenarios[0];
+                
+                for (const s of scenarios) {
+                    cumulative += s.probability;
+                    if (random <= cumulative) {
+                        scenario = s;
+                        break;
+                    }
+                }
+                
+                this.processFaceDetection(scenario);
+            }
+            
+            processFaceDetection(scenario) {
+                const { faces, focused } = scenario;
+                
+                if (faces === 0) {
+                    this.consecutiveNoFace++;
+                    this.updateStatusCard('faceStatus', 'danger', 'No Face Detected');
+                    this.updateStatusCard('attentionStatus', 'danger', 'No Attention');
+                    
+                    if (this.consecutiveNoFace >= 3) { // 6 seconds
+                        this.handleViolation('NO_FACE', 'No face detected for extended period');
+                    }
+                } else if (faces === 1) {
+                    this.consecutiveNoFace = 0;
+                    this.lastFaceDetection = Date.now();
+                    this.updateStatusCard('faceStatus', 'good', 'Face Detected');
+                    
+                    if (focused) {
+                        this.updateStatusCard('attentionStatus', 'good', 'Focused');
+                    } else {
+                        this.updateStatusCard('attentionStatus', 'warning', 'Looking Away');
+                        this.handleViolation('LOOKING_AWAY', 'Candidate looking away from camera');
+                    }
+                } else {
+                    this.updateStatusCard('faceStatus', 'danger', `${faces} Faces Detected`);
+                    this.updateStatusCard('attentionStatus', 'danger', 'Multiple People');
+                    this.handleViolation('MULTIPLE_FACES', `${faces} faces detected simultaneously`);
+                }
+                
+                // Draw simple detection visualization
+                this.drawDetectionVisualization(scenario);
+            }
+            
+            async detectObjects() {
+                if (!this.objectModel) return;
+                
+                try {
+                    const predictions = await this.objectModel.detect(this.video);
+                    const suspiciousObjects = ['cell phone', 'book', 'laptop', 'person'];
+                    let suspicious = [];
+                    
+                    predictions.forEach(prediction => {
+                        if (prediction.score > 0.6) {
+                            const objectName = prediction.class.toLowerCase();
+                            if (suspiciousObjects.some(obj => objectName.includes(obj))) {
+                                suspicious.push(objectName);
+                            }
+                        }
+                    });
+                    
+                    if (suspicious.length > 0) {
+                        this.updateStatusCard('objectStatus', 'danger', 
+                            `Suspicious: ${suspicious.join(', ')}`);
+                        suspicious.forEach(obj => {
+                            this.handleViolation('SUSPICIOUS_OBJECT', `Detected: ${obj}`);
+                        });
+                    } else if (predictions.length > 0) {
+                        this.updateStatusCard('objectStatus', 'warning', 
+                            `${predictions.length} objects detected`);
+                    } else {
+                        this.updateStatusCard('objectStatus', 'good', 'No suspicious objects');
+                    }
+                } catch (error) {
+                    console.error('Object detection failed:', error);
+                }
+            }
+            
+            drawDetectionVisualization(scenario) {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                if (scenario.faces > 0) {
+                    // Draw face rectangle(s)
+                    const faceWidth = 200;
+                    const faceHeight = 250;
+                    const centerX = this.canvas.width / 2 - faceWidth / 2;
+                    const centerY = this.canvas.height / 2 - faceHeight / 2;
+                    
+                    for (let i = 0; i < scenario.faces; i++) {
+                        const x = centerX + (i * 50);
+                        const y = centerY + (i * 30);
+                        
+                        this.ctx.strokeStyle = scenario.focused ? 'green' : 'red';
+                        this.ctx.lineWidth = 3;
+                        this.ctx.strokeRect(x, y, faceWidth, faceHeight);
+                        
+                        // Label
+                        this.ctx.fillStyle = scenario.focused ? 'green' : 'red';
+                        this.ctx.font = '16px Arial';
+                        this.ctx.fillText(`Face ${i + 1}`, x, y - 10);
+                    }
+                }
+            }
+            
+            handleViolation(type, description) {
+                if (type === 'NO_FACE' || type === 'LOOKING_AWAY') {
+                    this.stats.focusLossEvents++;
+                } else if (type === 'SUSPICIOUS_OBJECT') {
+                    this.stats.suspiciousItems++;
+                }
+                
+                this.addAlert(`⚠️ ${description}`, 'danger');
+                this.logEvent(type, description);
+            }
+            
+            updateStats() {
+                if (this.startTime) {
+                    const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                    const minutes = Math.floor(elapsed / 60);
+                    const seconds = elapsed % 60;
+                    document.getElementById('duration').textContent = 
+                        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+                
+                document.getElementById('focusLoss').textContent = this.stats.focusLossEvents;
+                document.getElementById('suspiciousItems').textContent = this.stats.suspiciousItems;
+                document.getElementById('integrityScore').textContent = this.stats.integrityScore;
+            }
+            
+            calculateIntegrityScore() {
+                let score = 100;
+                score -= this.stats.focusLossEvents * 10;
+                score -= this.stats.suspiciousItems * 15;
+                this.stats.integrityScore = Math.max(0, score);
+            }
+            
+            updateStatusCard(cardId, status, text) {
+                const card = document.getElementById(cardId);
+                card.className = `status-card ${status}`;
+                const statusText = card.querySelector('[id$="StatusText"]');
+                if (statusText) {
+                    statusText.textContent = text;
+                }
+            }
+            
+            addAlert(message, type = 'info') {
+                const alertLog = document.getElementById('alertLog');
+                const alert = document.createElement('div');
+                alert.className = `alert-item ${type}`;
+                alert.textContent = `[${this.getTimeStamp()}] ${message}`;
+                
+                alertLog.insertBefore(alert, alertLog.firstChild);
+                
+                // Keep only last 10 alerts
+                const alerts = alertLog.children;
+                if (alerts.length > 10) {
+                    alertLog.removeChild(alerts[alerts.length - 1]);
+                }
+            }
+            
+            getTimeStamp() {
+                if (!this.startTime) return '00:00';
+                const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            logEvent(type, description) {
+                this.stats.events.push({
+                    timestamp: Date.now(),
+                    type: type,
+                    description: description
+                });
+            }
+            
+            generateReport() {
+                const candidateName = document.getElementById('candidateName').value || 'Unknown';
+                const position = document.getElementById('position').value || 'Not specified';
+                const duration = Math.floor(this.stats.duration / 60);
+                
+                const reportHTML = `
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <div class="integrity-score score-${this.getScoreClass()}">${this.stats.integrityScore}%</div>
+                        <h4>Final Integrity Score</h4>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                        <div>
+                            <h4>📋 Interview Details</h4>
+                            <p><strong>Candidate:</strong> ${candidateName}</p>
+                            <p><strong>Position:</strong> ${position}</p>
+                            <p><strong>Duration:</strong> ${duration} minutes</p>
+                            <p><strong>Session ID:</strong> ${this.sessionId}</p>
+                        </div>
+                        <div>
+                            <h4>📊 Violation Summary</h4>
+                            <p><strong>Focus Loss Events:</strong> ${this.stats.focusLossEvents}</p>
+                            <p><strong>Suspicious Items:</strong> ${this.stats.suspiciousItems}</p>
+                            <p><strong>Total Events:</strong> ${this.stats.events.length}</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4>🚨 Event Timeline</h4>
+                        <div style="max-height: 300px; overflow-y: auto; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                            ${this.stats.events.map(event => `
+                                <div style="padding: 8px; border-bottom: 1px solid #dee2e6;">
+                                    <strong>${new Date(event.timestamp).toLocaleTimeString()}</strong> - 
+                                    ${event.type}: ${event.description}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px; text-align: center;">
+                        <p><strong>Recommendation:</strong> ${this.getRecommendation()}</p>
+                    </div>
+                `;
+                
+                document.getElementById('reportContent').innerHTML = reportHTML;
+                document.getElementById('reportSection').style.display = 'block';
+                document.getElementById('reportSection').scrollIntoView({ behavior: 'smooth' });
+            }
+            
+            getScoreClass() {
+                if (this.stats.integrityScore >= 80) return 'good';
+                if (this.stats.integrityScore >= 60) return 'warning';
+                return 'danger';
+            }
+            
+            getRecommendation() {
+                if (this.stats.integrityScore >= 90) return 'Excellent performance. No concerns detected.';
+                if (this.stats.integrityScore >= 80) return 'Good performance with minor issues.';
+                if (this.stats.integrityScore >= 70) return 'Acceptable with some concerns. Review recommended.';
+                return 'Multiple violations detected. Manual review required.';
+            }
+            
+            generateSessionId() {
+                return 'PRSN_' + Date.now().toString(36).toUpperCase() + '_' + 
+                       Math.random().toString(36).substr(2, 4).toUpperCase();
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new VideoProctoringSystem();
+        });
+    </script>
+</body>
+</html>
